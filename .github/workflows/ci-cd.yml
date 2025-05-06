@@ -97,4 +97,5 @@ jobs:
           --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/document-classifier \
           --platform managed \
           --region us-central1 \
+          --set-env-vars="OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" \
           --allow-unauthenticated

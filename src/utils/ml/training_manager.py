@@ -5,8 +5,11 @@ import os
 import threading
 import time
 import datetime
+import tempfile
 import numpy as np
 from typing import Dict, Union
+
+from src.utils import gcs_utils
 
 # ML libraries
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -120,10 +123,18 @@ class TrainingManager:
             print("Finalizing model...")
             accuracy = np.mean(model.predict(X_test_tfidf) == y_test)
             
-            # Save model components
+            # Save model components locally
+            os.makedirs(MODEL_DIR, exist_ok=True)
             joblib.dump(model, DEFAULT_MODEL_PATH)
             joblib.dump(vectorizer, DEFAULT_VECTORIZER_PATH)
-            joblib.dump(label_encoder, os.path.join(MODEL_DIR, 'label_encoder.joblib'))
+            label_encoder_path = os.path.join(MODEL_DIR, 'label_encoder.joblib')
+            joblib.dump(label_encoder, label_encoder_path)
+            
+            # Save model components to GCS
+            print("Saving model to Google Cloud Storage...")
+            gcs_utils.upload_file(DEFAULT_MODEL_PATH, "models/document_classifier.joblib")
+            gcs_utils.upload_file(DEFAULT_VECTORIZER_PATH, "models/tfidf_vectorizer.joblib")
+            gcs_utils.upload_file(label_encoder_path, "models/label_encoder.joblib")
             
             # Update final status
             self._update_status("completed", accuracy=float(accuracy))

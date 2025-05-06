@@ -17,3 +17,5 @@ joblib==1.5.0
 nltk==3.9.1
 # Server dependencies
 gunicorn==22.0.0
+# Google Cloud dependencies
+google-cloud-storage==3.1.0

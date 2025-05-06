@@ -7,8 +7,11 @@ import datetime
 import uuid
 import threading
 import random
+import tempfile
 from typing import Dict, List, Tuple, Optional, Union
 import pandas as pd
+
+from src.utils import gcs_utils
 
 from src.utils.ml.data_generator import DOCUMENT_TYPES, generate_documents_batch
 
@@ -40,25 +43,49 @@ class DatasetManager:
     @staticmethod
     def load_datasets() -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Load training and test datasets, or create empty ones if they don't exist."""
-        train_csv_path = os.path.join(ML_DATA_DIR, "train_data.csv")
-        test_csv_path = os.path.join(ML_DATA_DIR, "test_data.csv")
+        # GCS paths for datasets
+        train_gcs_path = "ml_data/train_data.csv"
+        test_gcs_path = "ml_data/test_data.csv"
         
         columns = ["doc_type", "text", "industry", "id", "timestamp"]
         
-        if not os.path.exists(train_csv_path) or not os.path.exists(test_csv_path):
-            return pd.DataFrame(columns=columns), pd.DataFrame(columns=columns)
+        # Try to load from GCS
+        train_df = gcs_utils.download_dataframe(train_gcs_path)
+        test_df = gcs_utils.download_dataframe(test_gcs_path)
         
-        return pd.read_csv(train_csv_path), pd.read_csv(test_csv_path)
+        # If not found, create empty DataFrames
+        if train_df is None:
+            train_df = pd.DataFrame(columns=columns)
+        if test_df is None:
+            test_df = pd.DataFrame(columns=columns)
+            
+        # Also try loading from local filesystem as fallback
+        if train_df.empty and test_df.empty:
+            train_csv_path = os.path.join(ML_DATA_DIR, "train_data.csv")
+            test_csv_path = os.path.join(ML_DATA_DIR, "test_data.csv")
+            
+            if os.path.exists(train_csv_path) and os.path.exists(test_csv_path):
+                train_df = pd.read_csv(train_csv_path)
+                test_df = pd.read_csv(test_csv_path)
+                
+                # Upload to GCS for future use
+                gcs_utils.upload_dataframe(train_df, train_gcs_path)
+                gcs_utils.upload_dataframe(test_df, test_gcs_path)
+        
+        return train_df, test_df
     
     def save_datasets(self, train_df: pd.DataFrame, test_df: pd.DataFrame) -> Dict[str, str]:
         """Save datasets to CSV and individual text files."""
-        # Save CSVs
-        train_csv_path = os.path.join(ML_DATA_DIR, "train_data.csv")
-        test_csv_path = os.path.join(ML_DATA_DIR, "test_data.csv")
+        # GCS paths for datasets
+        train_gcs_path = "ml_data/train_data.csv"
+        test_gcs_path = "ml_data/test_data.csv"
+        stats_gcs_path = "ml_data/dataset_stats.json"
         
         print(f"Saving {len(train_df)} training and {len(test_df)} test documents")
-        train_df.to_csv(train_csv_path, index=False)
-        test_df.to_csv(test_csv_path, index=False)
+        
+        # Save to GCS
+        gcs_utils.upload_dataframe(train_df, train_gcs_path)
+        gcs_utils.upload_dataframe(test_df, test_gcs_path)
         
         # Save stats
         stats = {
@@ -68,16 +95,26 @@ class DatasetManager:
             "last_updated": datetime.datetime.now().isoformat()
         }
         
+        gcs_utils.upload_json(stats, stats_gcs_path)
+        
+        # Also save to local filesystem for backward compatibility
+        train_csv_path = os.path.join(ML_DATA_DIR, "train_data.csv")
+        test_csv_path = os.path.join(ML_DATA_DIR, "test_data.csv")
         stats_path = os.path.join(ML_DATA_DIR, "dataset_stats.json")
+        
+        train_df.to_csv(train_csv_path, index=False)
+        test_df.to_csv(test_csv_path, index=False)
+        
         with open(stats_path, 'w') as f:
             json.dump(stats, f, indent=2)
         
-        # Save individual documents
-        def save_documents(df, base_dir):
+        # Save individual documents to GCS
+        def save_documents(df, base_dir, gcs_prefix):
             for _, row in df.iterrows():
                 doc_type = row["doc_type"]
                 doc_id = row.get("id", str(uuid.uuid4()))
                 
+                # Save locally
                 type_dir = os.path.join(base_dir, doc_type)
                 os.makedirs(type_dir, exist_ok=True)
                 
@@ -85,11 +122,19 @@ class DatasetManager:
                 if not os.path.exists(file_path):
                     with open(file_path, 'w', encoding='utf-8') as f:
                         f.write(row["text"])
+                
+                # Save to GCS
+                gcs_path = f"{gcs_prefix}/{doc_type}/{doc_id}.txt"
+                gcs_utils.upload_string(row["text"], gcs_path)
         
-        save_documents(train_df, TRAIN_DATA_DIR)
-        save_documents(test_df, TEST_DATA_DIR)
+        save_documents(train_df, TRAIN_DATA_DIR, "ml_data/train")
+        save_documents(test_df, TEST_DATA_DIR, "ml_data/test")
         
-        return {"train_csv": train_csv_path, "test_csv": test_csv_path, "stats": stats_path}
+        return {
+            "train_csv": f"gs://{gcs_utils.DEFAULT_BUCKET_NAME}/{train_gcs_path}", 
+            "test_csv": f"gs://{gcs_utils.DEFAULT_BUCKET_NAME}/{test_gcs_path}", 
+            "stats": f"gs://{gcs_utils.DEFAULT_BUCKET_NAME}/{stats_gcs_path}"
+        }
     
     def get_generation_status(self) -> Dict:
         """Get the current document generation status."""

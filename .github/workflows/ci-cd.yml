@@ -93,9 +93,11 @@ jobs:
     
     - name: Deploy to Cloud Run
       run: |
+        # Set service account for Cloud Run to access GCS
         gcloud run deploy document-classifier \
           --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/document-classifier \
           --platform managed \
           --region us-central1 \
-          --set-env-vars="OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" \
+          --set-env-vars="OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }},GCS_BUCKET_NAME=document-classifier-data-${{ secrets.GCP_PROJECT_ID }}" \
+          --service-account=github-actions@${{ secrets.GCP_PROJECT_ID }}.iam.gserviceaccount.com \
           --allow-unauthenticated

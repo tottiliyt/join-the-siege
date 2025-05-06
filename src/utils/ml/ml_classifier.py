@@ -116,10 +116,17 @@ class DocumentClassifier:
                 
                 # Create temporary directory for downloaded model files
                 with tempfile.TemporaryDirectory() as temp_dir:
-                    # GCS paths
+                    # Hardcoded GCS bucket and paths
+                    GCS_BUCKET = "document-classifier-data-document-classifier-project"
                     model_gcs_path = "models/document_classifier.joblib"
                     vectorizer_gcs_path = "models/tfidf_vectorizer.joblib"
                     label_encoder_gcs_path = "models/label_encoder.joblib"
+                    
+                    # Override the default bucket name in gcs_utils for this operation
+                    original_bucket = gcs_utils.DEFAULT_BUCKET_NAME
+                    gcs_utils.DEFAULT_BUCKET_NAME = GCS_BUCKET
+                    
+                    try:
                     
                     # Download model files from GCS
                     temp_model_path = os.path.join(temp_dir, "document_classifier.joblib")
@@ -154,6 +161,9 @@ class DocumentClassifier:
                     else:
                         print(f"Warning: Model files not found in GCS")
                         return False
+                    finally:
+                        # Always restore the original bucket name
+                        gcs_utils.DEFAULT_BUCKET_NAME = original_bucket
             
             # Set classes and trained flag
             self.classes = self.classifier.classes_

@@ -79,3 +79,5 @@ logs/
 *.db
 *.sqlite3
 *.pyc
+
+test*.txt

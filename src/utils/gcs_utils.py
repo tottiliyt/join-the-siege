@@ -10,7 +10,7 @@ from google.cloud import storage
 from google.cloud.exceptions import NotFound
 
 # Default bucket name - can be overridden with environment variable
-DEFAULT_BUCKET_NAME = os.environ.get('GCS_BUCKET_NAME', 'document-classifier-data-606021919371')
+DEFAULT_BUCKET_NAME = os.environ.get('GCS_BUCKET_NAME', 'document-classifier-data-document-classifier-project')
 
 # Flag to track if GCS is available
 GCS_AVAILABLE = True

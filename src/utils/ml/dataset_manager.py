@@ -43,39 +43,53 @@ class DatasetManager:
     @staticmethod
     def load_datasets() -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Load training and test datasets, or create empty ones if they don't exist."""
+        # Hardcoded GCS bucket name
+        GCS_BUCKET = "document-classifier-data-document-classifier-project"
+        
         # GCS paths for datasets
         train_gcs_path = "ml_data/train_data.csv"
         test_gcs_path = "ml_data/test_data.csv"
         
         columns = ["doc_type", "text", "industry", "id", "timestamp"]
         
-        # Try to load from GCS
-        train_df = gcs_utils.download_dataframe(train_gcs_path)
-        test_df = gcs_utils.download_dataframe(test_gcs_path)
+        # Override the default bucket name in gcs_utils for this operation
+        original_bucket = gcs_utils.DEFAULT_BUCKET_NAME
+        gcs_utils.DEFAULT_BUCKET_NAME = GCS_BUCKET
         
-        # If not found, create empty DataFrames
-        if train_df is None:
-            train_df = pd.DataFrame(columns=columns)
-        if test_df is None:
-            test_df = pd.DataFrame(columns=columns)
+        try:
+            # Try to load from GCS
+            train_df = gcs_utils.download_dataframe(train_gcs_path)
+            test_df = gcs_utils.download_dataframe(test_gcs_path)
             
-        # Also try loading from local filesystem as fallback
-        if train_df.empty and test_df.empty:
-            train_csv_path = os.path.join(ML_DATA_DIR, "train_data.csv")
-            test_csv_path = os.path.join(ML_DATA_DIR, "test_data.csv")
-            
-            if os.path.exists(train_csv_path) and os.path.exists(test_csv_path):
-                train_df = pd.read_csv(train_csv_path)
-                test_df = pd.read_csv(test_csv_path)
+            # If not found, create empty DataFrames
+            if train_df is None:
+                train_df = pd.DataFrame(columns=columns)
+            if test_df is None:
+                test_df = pd.DataFrame(columns=columns)
                 
-                # Upload to GCS for future use
-                gcs_utils.upload_dataframe(train_df, train_gcs_path)
-                gcs_utils.upload_dataframe(test_df, test_gcs_path)
+            # Also try loading from local filesystem as fallback
+            if train_df.empty and test_df.empty:
+                train_csv_path = os.path.join(ML_DATA_DIR, "train_data.csv")
+                test_csv_path = os.path.join(ML_DATA_DIR, "test_data.csv")
+                
+                if os.path.exists(train_csv_path) and os.path.exists(test_csv_path):
+                    train_df = pd.read_csv(train_csv_path)
+                    test_df = pd.read_csv(test_csv_path)
+                    
+                    # Upload to GCS for future use
+                    gcs_utils.upload_dataframe(train_df, train_gcs_path)
+                    gcs_utils.upload_dataframe(test_df, test_gcs_path)
+        finally:
+            # Always restore the original bucket name
+            gcs_utils.DEFAULT_BUCKET_NAME = original_bucket
         
         return train_df, test_df
     
     def save_datasets(self, train_df: pd.DataFrame, test_df: pd.DataFrame) -> Dict[str, str]:
         """Save datasets to CSV and individual text files."""
+        # Hardcoded GCS bucket name
+        GCS_BUCKET = "document-classifier-data-document-classifier-project"
+        
         # GCS paths for datasets
         train_gcs_path = "ml_data/train_data.csv"
         test_gcs_path = "ml_data/test_data.csv"
@@ -83,19 +97,27 @@ class DatasetManager:
         
         print(f"Saving {len(train_df)} training and {len(test_df)} test documents")
         
-        # Save to GCS
-        gcs_utils.upload_dataframe(train_df, train_gcs_path)
-        gcs_utils.upload_dataframe(test_df, test_gcs_path)
+        # Override the default bucket name in gcs_utils for this operation
+        original_bucket = gcs_utils.DEFAULT_BUCKET_NAME
+        gcs_utils.DEFAULT_BUCKET_NAME = GCS_BUCKET
         
-        # Save stats
-        stats = {
-            "train_distribution": train_df["doc_type"].value_counts().to_dict(),
-            "test_distribution": test_df["doc_type"].value_counts().to_dict(),
-            "total_samples": len(train_df) + len(test_df),
-            "last_updated": datetime.datetime.now().isoformat()
-        }
-        
-        gcs_utils.upload_json(stats, stats_gcs_path)
+        try:
+            # Save to GCS
+            gcs_utils.upload_dataframe(train_df, train_gcs_path)
+            gcs_utils.upload_dataframe(test_df, test_gcs_path)
+            
+            # Save stats
+            stats = {
+                "train_distribution": train_df["doc_type"].value_counts().to_dict(),
+                "test_distribution": test_df["doc_type"].value_counts().to_dict(),
+                "total_samples": len(train_df) + len(test_df),
+                "last_updated": datetime.datetime.now().isoformat()
+            }
+            
+            gcs_utils.upload_json(stats, stats_gcs_path)
+        finally:
+            # Always restore the original bucket name
+            gcs_utils.DEFAULT_BUCKET_NAME = original_bucket
         
         # Also save to local filesystem for backward compatibility
         train_csv_path = os.path.join(ML_DATA_DIR, "train_data.csv")

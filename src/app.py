@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 import os
 import uuid
+import time
 from datetime import datetime
 
 from src.classifier import classify_file
@@ -8,7 +9,15 @@ from src.utils.ml.data_generator import DOCUMENT_TYPES
 from src.utils.ml.dataset_manager import dataset_manager
 from src.utils.ml.training_manager import training_manager
 
+# Import startup script to download model files at startup
+from src.startup import download_model_files
+
 app = Flask(__name__)
+
+# Download model files from GCS at startup
+print("Starting model download from GCS...")
+download_model_files()
+print("Model download complete.")
 
 # Import file extension sets from classifier
 from src.classifier import IMAGE_EXTENSIONS, DOCUMENT_EXTENSIONS, SPREADSHEET_EXTENSIONS, TEXT_EXTENSIONS, JSON_EXTENSIONS

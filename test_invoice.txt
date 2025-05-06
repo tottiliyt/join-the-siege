@@ -1,0 +1,24 @@
+INVOICE #12345
+
+Date: May 5, 2025
+Due Date: June 5, 2025
+
+Bill To:
+Acme Corporation
+123 Business St.
+San Francisco, CA 94105
+
+Description                     Quantity    Rate    Amount
+-----------------------------------------------------------------
+Web Development Services        40 hours    $150    $6,000.00
+UI/UX Design                    20 hours    $175    $3,500.00
+Server Configuration            5 hours     $200    $1,000.00
+-----------------------------------------------------------------
+                                            Subtotal: $10,500.00
+                                            Tax (8%):   $840.00
+                                            Total:    $11,340.00
+
+Payment Terms: Net 30
+Please make checks payable to: Tech Solutions Inc.
+
+Thank you for your business!

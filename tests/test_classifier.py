@@ -62,16 +62,8 @@ def test_classify_file(mock_preprocess, mock_get_classifier):
     mock_classifier.predict.assert_called_once_with("Sample document content")
 
 @patch('src.classifier.DocumentClassifier')
-@patch('src.classifier.os.path.exists')
-@patch('src.classifier.os.path.getmtime')
-def test_get_ml_classifier(mock_getmtime, mock_exists, mock_classifier_class):
+def test_get_ml_classifier(mock_classifier_class):
     """Test that the ML classifier can be loaded."""
-    # Mock the file existence check
-    mock_exists.return_value = True
-    
-    # Mock the file modification time
-    mock_getmtime.return_value = 12345
-    
     # Mock the classifier class
     mock_classifier_instance = MagicMock()
     mock_classifier_instance.load_model.return_value = True
@@ -84,8 +76,7 @@ def test_get_ml_classifier(mock_getmtime, mock_exists, mock_classifier_class):
     assert classifier is not None
     
     # Verify the mocks were called correctly
-    mock_exists.assert_called()
-    mock_classifier_instance.load_model.assert_called_once()
+    mock_classifier_instance.load_model.assert_called_once_with(force_gcs_load=True)
 
 def test_classify_file_no_text():
     """Test classification when no text can be extracted."""

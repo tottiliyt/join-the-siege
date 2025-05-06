@@ -92,13 +92,12 @@ class DocumentClassifier:
             "probabilities": prob_dict
         }
 
-    def load_model(self, model_path: str = DEFAULT_MODEL_PATH, 
-                  vectorizer_path: str = DEFAULT_VECTORIZER_PATH,
-                  label_encoder_path: str = DEFAULT_LABEL_ENCODER_PATH) -> bool:
-        """Load trained model components from disk or GCS."""
+    def load_model(self, model_path=DEFAULT_MODEL_PATH, vectorizer_path=DEFAULT_VECTORIZER_PATH, 
+                 label_encoder_path=DEFAULT_LABEL_ENCODER_PATH, force_gcs_load=False) -> bool:
+        """Load a trained model from disk or GCS."""
         try:
-            # First, try loading from local filesystem
-            if os.path.exists(model_path) and os.path.exists(vectorizer_path):
+            # First try to load from local filesystem (unless force_gcs_load is True)
+            if not force_gcs_load and os.path.exists(model_path) and os.path.exists(vectorizer_path):
                 print(f"Loading ML classifier model from local filesystem: {model_path}")
                 self.classifier = joblib.load(model_path)
                 self.vectorizer = joblib.load(vectorizer_path)

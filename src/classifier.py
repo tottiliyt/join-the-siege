@@ -82,38 +82,25 @@ _model_last_modified = 0
 
 def get_ml_classifier():
     """Get or initialize the ML classifier."""
-    global _ml_classifier, _model_last_modified
+    global _ml_classifier
     
-    # Default model paths (at project root level)
-    project_root = os.path.dirname(os.path.dirname(__file__))
-    model_path = os.path.join(project_root, 'models', 'document_classifier.joblib')
-    vectorizer_path = os.path.join(project_root, 'models', 'tfidf_vectorizer.joblib')
-    
-    # Check if model files exist
-    if not (os.path.exists(model_path) and os.path.exists(vectorizer_path)):
-        print(f"Warning: Model files not found at {model_path}")
-        return None
-    
-    # Check if model file has been updated
-    current_modified = max(
-        os.path.getmtime(model_path),
-        os.path.getmtime(vectorizer_path)
-    )
-    
-    # Reload if model is None or if model file has been updated
-    if _ml_classifier is None or current_modified > _model_last_modified:
-        try:
-            print(f"Loading ML classifier model from {model_path}")
-            _ml_classifier = DocumentClassifier()
-            _ml_classifier.load_model(
-                model_path=model_path,
-                vectorizer_path=vectorizer_path
-            )
-            _model_last_modified = current_modified
-            print("ML classifier model loaded successfully")
-        except Exception as e:
-            print(f"Warning: Could not load ML classifier: {e}")
+    # Always create a fresh instance for each request to ensure we're using the latest model
+    try:
+        print("Creating fresh ML classifier instance for this request")
+        _ml_classifier = DocumentClassifier()
+        
+        # Force load from GCS by setting force_gcs_load=True
+        # This will bypass local file checks and always attempt to load from GCS
+        success = _ml_classifier.load_model(force_gcs_load=True)
+        
+        if success:
+            print("ML classifier model loaded successfully from GCS")
+        else:
+            print("Warning: Failed to load ML classifier model from GCS")
             _ml_classifier = None
+    except Exception as e:
+        print(f"Warning: Could not load ML classifier: {e}")
+        _ml_classifier = None
     
     return _ml_classifier
 

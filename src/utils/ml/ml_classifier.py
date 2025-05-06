@@ -127,40 +127,39 @@ class DocumentClassifier:
                     gcs_utils.DEFAULT_BUCKET_NAME = GCS_BUCKET
                     
                     try:
-                    
-                    # Download model files from GCS
-                    temp_model_path = os.path.join(temp_dir, "document_classifier.joblib")
-                    temp_vectorizer_path = os.path.join(temp_dir, "tfidf_vectorizer.joblib")
-                    temp_label_encoder_path = os.path.join(temp_dir, "label_encoder.joblib")
-                    
-                    # Check if files exist in GCS and download them
-                    if gcs_utils.file_exists(model_gcs_path) and gcs_utils.file_exists(vectorizer_gcs_path):
-                        print(f"Loading ML classifier model from GCS: {model_gcs_path}")
-                        gcs_utils.download_file(model_gcs_path, temp_model_path)
-                        gcs_utils.download_file(vectorizer_gcs_path, temp_vectorizer_path)
+                        # Download model files from GCS
+                        temp_model_path = os.path.join(temp_dir, "document_classifier.joblib")
+                        temp_vectorizer_path = os.path.join(temp_dir, "tfidf_vectorizer.joblib")
+                        temp_label_encoder_path = os.path.join(temp_dir, "label_encoder.joblib")
                         
-                        # Load the downloaded files
-                        self.classifier = joblib.load(temp_model_path)
-                        self.vectorizer = joblib.load(temp_vectorizer_path)
-                        
-                        # Try to download and load label encoder
-                        if gcs_utils.file_exists(label_encoder_gcs_path):
-                            gcs_utils.download_file(label_encoder_gcs_path, temp_label_encoder_path)
-                            self.label_encoder = joblib.load(temp_label_encoder_path)
-                            print(f"Loaded label encoder from GCS: {label_encoder_gcs_path}")
+                        # Check if files exist in GCS and download them
+                        if gcs_utils.file_exists(model_gcs_path) and gcs_utils.file_exists(vectorizer_gcs_path):
+                            print(f"Loading ML classifier model from GCS: {model_gcs_path}")
+                            gcs_utils.download_file(model_gcs_path, temp_model_path)
+                            gcs_utils.download_file(vectorizer_gcs_path, temp_vectorizer_path)
+                            
+                            # Load the downloaded files
+                            self.classifier = joblib.load(temp_model_path)
+                            self.vectorizer = joblib.load(temp_vectorizer_path)
+                            
+                            # Try to download and load label encoder
+                            if gcs_utils.file_exists(label_encoder_gcs_path):
+                                gcs_utils.download_file(label_encoder_gcs_path, temp_label_encoder_path)
+                                self.label_encoder = joblib.load(temp_label_encoder_path)
+                                print(f"Loaded label encoder from GCS: {label_encoder_gcs_path}")
+                            else:
+                                print(f"Warning: Label encoder not found in GCS")
+                                self.label_encoder = None
+                            
+                            # Save the downloaded files to local filesystem for future use
+                            os.makedirs(os.path.dirname(model_path), exist_ok=True)
+                            joblib.dump(self.classifier, model_path)
+                            joblib.dump(self.vectorizer, vectorizer_path)
+                            if self.label_encoder is not None:
+                                joblib.dump(self.label_encoder, label_encoder_path)
                         else:
-                            print(f"Warning: Label encoder not found in GCS")
-                            self.label_encoder = None
-                        
-                        # Save the downloaded files to local filesystem for future use
-                        os.makedirs(os.path.dirname(model_path), exist_ok=True)
-                        joblib.dump(self.classifier, model_path)
-                        joblib.dump(self.vectorizer, vectorizer_path)
-                        if self.label_encoder is not None:
-                            joblib.dump(self.label_encoder, label_encoder_path)
-                    else:
-                        print(f"Warning: Model files not found in GCS")
-                        return False
+                            print(f"Warning: Model files not found in GCS")
+                            return False
                     finally:
                         # Always restore the original bucket name
                         gcs_utils.DEFAULT_BUCKET_NAME = original_bucket
